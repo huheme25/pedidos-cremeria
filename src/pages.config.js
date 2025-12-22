@@ -3,6 +3,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import AdminOrderDetail from './pages/AdminOrderDetail';
 import AdminOrders from './pages/AdminOrders';
 import AdminProducts from './pages/AdminProducts';
+import AdminProductsImport from './pages/AdminProductsImport';
 import AdminUsers from './pages/AdminUsers';
 import ClientOrders from './pages/ClientOrders';
 import NewOrder from './pages/NewOrder';
@@ -11,7 +12,6 @@ import SellerOrderDetail from './pages/SellerOrderDetail';
 import SellerOrders from './pages/SellerOrders';
 import WarehouseOrderDetail from './pages/WarehouseOrderDetail';
 import WarehouseOrders from './pages/WarehouseOrders';
-import AdminProductsImport from './pages/AdminProductsImport';
 import __Layout from './Layout.jsx';
 
 
@@ -21,6 +21,7 @@ export const PAGES = {
     "AdminOrderDetail": AdminOrderDetail,
     "AdminOrders": AdminOrders,
     "AdminProducts": AdminProducts,
+    "AdminProductsImport": AdminProductsImport,
     "AdminUsers": AdminUsers,
     "ClientOrders": ClientOrders,
     "NewOrder": NewOrder,
@@ -29,7 +30,6 @@ export const PAGES = {
     "SellerOrders": SellerOrders,
     "WarehouseOrderDetail": WarehouseOrderDetail,
     "WarehouseOrders": WarehouseOrders,
-    "AdminProductsImport": AdminProductsImport,
 }
 
 export const pagesConfig = {
