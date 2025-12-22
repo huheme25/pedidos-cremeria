@@ -56,7 +56,14 @@ export default function AdminUsers() {
         base44.entities.User.list(),
         base44.entities.Client.list()
       ]);
-      setUsers(usersData);
+      
+      // Get all users including those without User entity data
+      const allUsers = usersData.map(u => ({
+        ...u,
+        hasEntityData: true
+      }));
+      
+      setUsers(allUsers);
       setClients(clientsData);
     } catch (error) {
       console.error(error);
