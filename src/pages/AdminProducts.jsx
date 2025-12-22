@@ -5,7 +5,8 @@ import {
   Plus, 
   Package, 
   Pencil,
-  DollarSign
+  DollarSign,
+  Upload
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -173,13 +174,23 @@ export default function AdminProducts() {
             <p className="text-slate-500 text-sm">{products.length} productos registrados</p>
           </div>
         </div>
-        <Button 
-          onClick={openNewDialog}
-          className="bg-amber-600 hover:bg-amber-700 text-white"
-        >
-          <Plus size={18} className="mr-2" />
-          Nuevo Producto
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            variant="outline"
+            onClick={() => navigate(createPageUrl('AdminProductsImport'))}
+            className="border-amber-200 text-amber-700 hover:bg-amber-50"
+          >
+            <Upload size={18} className="mr-2" />
+            Importar CSV
+          </Button>
+          <Button 
+            onClick={openNewDialog}
+            className="bg-amber-600 hover:bg-amber-700 text-white"
+          >
+            <Plus size={18} className="mr-2" />
+            Nuevo Producto
+          </Button>
+        </div>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3 mb-6">
