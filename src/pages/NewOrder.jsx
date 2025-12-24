@@ -9,12 +9,15 @@ import {
   Minus, 
   Trash2, 
   ShoppingCart,
-  Package
+  Package,
+  DollarSign,
+  Tag
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import {
   Select,
   SelectContent,
@@ -30,10 +33,12 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { toast } from 'sonner';
+import UpsellingSuggestions from '../components/orders/UpsellingSuggestions';
 
 export default function NewOrder() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
+  const [client, setClient] = useState(null);
   const [products, setProducts] = useState([]);
   const [cart, setCart] = useState([]);
   const [notes, setNotes] = useState('');
@@ -41,7 +46,7 @@ export default function NewOrder() {
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [showUpselling, setShowUpselling] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -54,7 +59,35 @@ export default function NewOrder() {
         base44.entities.Product.filter({ is_active: true })
       ]);
       setUser(currentUser);
-      setProducts(productsList);
+
+      if (!currentUser.assigned_client_id) {
+        setLoading(false);
+        return;
+      }
+
+      const clientData = await base44.entities.Client.filter({ id: currentUser.assigned_client_id });
+      const clientInfo = clientData[0];
+      setClient(clientInfo);
+
+      // Get client's price list
+      const priceList = clientInfo?.assigned_price_list || 'price_list_1';
+
+      // Map products with correct price based on client's price list
+      const productsWithPrice = productsList.map(p => {
+        const clientPrice = p[priceList] || p.wholesale_price;
+        const effectivePrice = (p.is_on_offer && p.offer_price && p.offer_price < clientPrice) 
+          ? p.offer_price 
+          : clientPrice;
+        
+        return {
+          ...p,
+          clientPrice: clientPrice,
+          effectivePrice: effectivePrice,
+          isDiscounted: effectivePrice < clientPrice
+        };
+      });
+
+      setProducts(productsWithPrice);
     } catch (error) {
       console.error(error);
     } finally {
@@ -86,8 +119,9 @@ export default function NewOrder() {
         product_sku: product.sku,
         product_name: product.name,
         unit: product.unit,
-        unit_price: product.wholesale_price,
-        quantity: 1
+        unit_price: product.effectivePrice,
+        quantity: 1,
+        quantity_requested_unit: product.unit
       }]);
     }
   };
@@ -112,6 +146,14 @@ export default function NewOrder() {
 
   const getCartItemCount = () => {
     return cart.reduce((sum, item) => sum + item.quantity, 0);
+  };
+
+  const handleContinueToUpselling = () => {
+    if (cart.length === 0) {
+      toast.error('Agrega al menos un producto al pedido');
+      return;
+    }
+    setShowUpselling(true);
   };
 
   const handleSubmit = async () => {
@@ -140,6 +182,7 @@ export default function NewOrder() {
         product_name: item.product_name,
         unit: item.unit,
         quantity_requested: item.quantity,
+        quantity_requested_unit: item.quantity_requested_unit,
         unit_price: item.unit_price,
         subtotal: item.quantity * item.unit_price
       }));
@@ -153,7 +196,7 @@ export default function NewOrder() {
       toast.error('Error al crear el pedido');
     } finally {
       setSubmitting(false);
-      setShowConfirmDialog(false);
+      setShowUpselling(false);
     }
   };
 
@@ -223,7 +266,13 @@ export default function NewOrder() {
             {filteredProducts.map(product => {
               const cartItem = cart.find(item => item.product_id === product.id);
               return (
-                <Card key={product.id} className="border-slate-200">
+                <Card key={product.id} className="border-slate-200 relative">
+                  {product.is_on_offer && (
+                    <Badge className="absolute top-2 right-2 bg-red-500 text-white">
+                      <Tag size={12} className="mr-1" />
+                      Oferta
+                    </Badge>
+                  )}
                   <CardContent className="p-4">
                     <div className="flex gap-3">
                       <div className="w-16 h-16 bg-slate-100 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -236,9 +285,25 @@ export default function NewOrder() {
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-slate-800 truncate">{product.name}</p>
                         <p className="text-xs text-slate-500">{product.sku} · {product.unit}</p>
-                        <p className="text-amber-600 font-semibold mt-1">
-                          ${product.wholesale_price?.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
-                        </p>
+                        <div className="mt-1">
+                          {product.isDiscounted ? (
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs line-through text-slate-400">
+                                ${product.clientPrice?.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                              </span>
+                              <span className="text-amber-600 font-semibold">
+                                ${product.effectivePrice?.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                              </span>
+                            </div>
+                          ) : (
+                            <p className="text-amber-600 font-semibold">
+                              ${product.effectivePrice?.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                            </p>
+                          )}
+                          {product.offer_description && (
+                            <p className="text-xs text-green-600 font-medium">{product.offer_description}</p>
+                          )}
+                        </div>
                       </div>
                     </div>
                     
@@ -350,9 +415,9 @@ export default function NewOrder() {
               <Button 
                 className="w-full bg-amber-600 hover:bg-amber-700 text-white"
                 disabled={cart.length === 0}
-                onClick={() => setShowConfirmDialog(true)}
+                onClick={handleContinueToUpselling}
               >
-                Enviar Pedido
+                Continuar
               </Button>
             </CardContent>
           </Card>
@@ -371,47 +436,27 @@ export default function NewOrder() {
             </div>
             <Button 
               className="bg-amber-600 hover:bg-amber-700 text-white"
-              onClick={() => setShowConfirmDialog(true)}
+              onClick={handleContinueToUpselling}
             >
-              Enviar Pedido
+              Continuar
             </Button>
           </div>
         </div>
       )}
 
-      <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Confirmar Pedido</DialogTitle>
-          </DialogHeader>
-          <div className="py-4">
-            <p className="text-slate-600 mb-4">
-              ¿Estás seguro de enviar este pedido con {getCartItemCount()} productos por un total de{' '}
-              <span className="font-semibold text-amber-600">
-                ${getCartTotal().toLocaleString('es-MX', { minimumFractionDigits: 2 })}
-              </span>?
-            </p>
-            {notes && (
-              <div className="bg-slate-50 p-3 rounded-lg">
-                <p className="text-sm text-slate-500 mb-1">Notas:</p>
-                <p className="text-sm text-slate-700">{notes}</p>
-              </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowConfirmDialog(false)}>
-              Cancelar
-            </Button>
-            <Button 
-              className="bg-amber-600 hover:bg-amber-700"
-              onClick={handleSubmit}
-              disabled={submitting}
-            >
-              {submitting ? 'Enviando...' : 'Confirmar'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <UpsellingSuggestions
+        open={showUpselling}
+        onClose={() => setShowUpselling(false)}
+        onConfirm={handleSubmit}
+        cart={cart}
+        products={products}
+        client={client}
+        onAddToCart={addToCart}
+        submitting={submitting}
+        totalAmount={getCartTotal()}
+        itemCount={getCartItemCount()}
+        notes={notes}
+      />
     </div>
   );
 }
