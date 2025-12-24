@@ -83,7 +83,8 @@ export default function AdminClients() {
       phone: '',
       email: '',
       route_zone: '',
-      client_type: 'mayorista_b',
+      client_type: 'tipo_1',
+      assigned_price_list: 'price_list_1',
       is_active: true
     });
     setShowDialog(true);
@@ -99,7 +100,8 @@ export default function AdminClients() {
       phone: client.phone || '',
       email: client.email || '',
       route_zone: client.route_zone || '',
-      client_type: client.client_type || 'mayorista_b',
+      client_type: client.client_type || 'tipo_1',
+      assigned_price_list: client.assigned_price_list || 'price_list_1',
       is_active: client.is_active !== false
     });
     setShowDialog(true);
@@ -132,18 +134,22 @@ export default function AdminClients() {
 
   const getTypeLabel = (type) => {
     const labels = {
-      mayorista_a: 'Mayorista A',
-      mayorista_b: 'Mayorista B',
-      mayorista_c: 'Mayorista C'
+      tipo_1: 'Tipo 1',
+      tipo_2: 'Tipo 2',
+      tipo_3: 'Tipo 3',
+      tipo_4: 'Tipo 4',
+      tipo_5: 'Tipo 5'
     };
     return labels[type] || type;
   };
 
   const getTypeColor = (type) => {
     const colors = {
-      mayorista_a: 'bg-green-100 text-green-800',
-      mayorista_b: 'bg-blue-100 text-blue-800',
-      mayorista_c: 'bg-purple-100 text-purple-800'
+      tipo_1: 'bg-green-100 text-green-800',
+      tipo_2: 'bg-blue-100 text-blue-800',
+      tipo_3: 'bg-purple-100 text-purple-800',
+      tipo_4: 'bg-amber-100 text-amber-800',
+      tipo_5: 'bg-pink-100 text-pink-800'
     };
     return colors[type] || 'bg-gray-100 text-gray-800';
   };
@@ -287,9 +293,29 @@ export default function AdminClients() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="mayorista_a">Mayorista A</SelectItem>
-                    <SelectItem value="mayorista_b">Mayorista B</SelectItem>
-                    <SelectItem value="mayorista_c">Mayorista C</SelectItem>
+                    <SelectItem value="tipo_1">Tipo 1</SelectItem>
+                    <SelectItem value="tipo_2">Tipo 2</SelectItem>
+                    <SelectItem value="tipo_3">Tipo 3</SelectItem>
+                    <SelectItem value="tipo_4">Tipo 4</SelectItem>
+                    <SelectItem value="tipo_5">Tipo 5</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Lista de Precios</Label>
+                <Select 
+                  value={formData.assigned_price_list} 
+                  onValueChange={(v) => setFormData({ ...formData, assigned_price_list: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="price_list_1">Lista 1</SelectItem>
+                    <SelectItem value="price_list_2">Lista 2</SelectItem>
+                    <SelectItem value="price_list_3">Lista 3</SelectItem>
+                    <SelectItem value="price_list_4">Lista 4</SelectItem>
+                    <SelectItem value="price_list_5">Lista 5</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
