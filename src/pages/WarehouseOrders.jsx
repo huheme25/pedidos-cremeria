@@ -5,6 +5,7 @@ import { createPageUrl } from '../utils';
 import { Search, Warehouse, Package } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import OrderCard from '../components/orders/OrderCard';
 
 export default function WarehouseOrders() {
@@ -13,6 +14,8 @@ export default function WarehouseOrders() {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('pendiente_revision');
   const [searchTerm, setSearchTerm] = useState('');
+  const [warehouseFilter, setWarehouseFilter] = useState('all');
+  const [user, setUser] = useState(null);
 
   useEffect(() => {
     loadOrders();
@@ -20,10 +23,21 @@ export default function WarehouseOrders() {
 
   const loadOrders = async () => {
     try {
-      const allOrders = await base44.entities.Order.list('-created_date');
+      const [currentUser, allOrders] = await Promise.all([
+        base44.auth.me(),
+        base44.entities.Order.list('-created_date')
+      ]);
+      setUser(currentUser);
       setOrders(allOrders.filter(o => 
         ['pendiente_revision', 'en_surtido'].includes(o.status)
       ));
+      
+      // Auto-set warehouse filter based on user role
+      if (currentUser.user_role === 'bodega_secos') {
+        setWarehouseFilter('secos');
+      } else if (currentUser.user_role === 'bodega_refrigerados') {
+        setWarehouseFilter('refrigerados');
+      }
     } catch (error) {
       console.error(error);
     } finally {
@@ -83,14 +97,28 @@ export default function WarehouseOrders() {
         </TabsList>
       </Tabs>
 
-      <div className="relative mb-6">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-        <Input
-          placeholder="Buscar por número o cliente..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-10"
-        />
+      <div className="flex gap-3 mb-6">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+          <Input
+            placeholder="Buscar por número o cliente..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        {user?.user_role === 'bodega' && (
+          <Select value={warehouseFilter} onValueChange={setWarehouseFilter}>
+            <SelectTrigger className="w-48">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas las bodegas</SelectItem>
+              <SelectItem value="secos">Secos</SelectItem>
+              <SelectItem value="refrigerados">Refrigerados</SelectItem>
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       {filteredOrders.length === 0 ? (

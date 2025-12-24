@@ -6,6 +6,7 @@ import { ArrowLeft, Calendar, User, FileText, Package, Check, AlertTriangle } fr
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -22,10 +23,13 @@ export default function WarehouseOrderDetail() {
   const navigate = useNavigate();
   const [order, setOrder] = useState(null);
   const [orderLines, setOrderLines] = useState([]);
+  const [products, setProducts] = useState({});
   const [fulfilledQuantities, setFulfilledQuantities] = useState({});
+  const [finalBilledQuantities, setFinalBilledQuantities] = useState({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [user, setUser] = useState(null);
 
   useEffect(() => {
     loadData();
@@ -41,20 +45,52 @@ export default function WarehouseOrderDetail() {
         return;
       }
 
-      const [orderData, lines] = await Promise.all([
+      const [currentUser, orderData, lines] = await Promise.all([
+        base44.auth.me(),
         base44.entities.Order.filter({ id: orderId }),
         base44.entities.OrderLine.filter({ order_id: orderId })
       ]);
 
+      setUser(currentUser);
+
       if (orderData.length > 0) {
         setOrder(orderData[0]);
-        setOrderLines(lines);
+        
+        // Load product details
+        const productIds = [...new Set(lines.map(l => l.product_id))];
+        const productsData = await base44.entities.Product.filter({ 
+          id: { $in: productIds } 
+        });
+        const productsMap = {};
+        productsData.forEach(p => {
+          productsMap[p.id] = p;
+        });
+        setProducts(productsMap);
+
+        // Filter lines based on user role
+        let filteredLines = lines;
+        if (currentUser.user_role === 'bodega_secos') {
+          filteredLines = lines.filter(l => {
+            const product = productsMap[l.product_id];
+            return product?.warehouse_type === 'secos' || product?.warehouse_type === 'mixto';
+          });
+        } else if (currentUser.user_role === 'bodega_refrigerados') {
+          filteredLines = lines.filter(l => {
+            const product = productsMap[l.product_id];
+            return product?.warehouse_type === 'refrigerados' || product?.warehouse_type === 'mixto';
+          });
+        }
+
+        setOrderLines(filteredLines);
         
         const initialQuantities = {};
-        lines.forEach(line => {
+        const initialBilledQuantities = {};
+        filteredLines.forEach(line => {
           initialQuantities[line.id] = line.quantity_fulfilled ?? line.quantity_requested;
+          initialBilledQuantities[line.id] = line.final_billed_quantity ?? line.quantity_fulfilled ?? line.quantity_requested;
         });
         setFulfilledQuantities(initialQuantities);
+        setFinalBilledQuantities(initialBilledQuantities);
       }
     } catch (error) {
       console.error(error);
@@ -80,17 +116,28 @@ export default function WarehouseOrderDetail() {
   const completeFulfillment = async () => {
     setSaving(true);
     try {
-      // Update all order lines with fulfilled quantities
-      const updatePromises = orderLines.map(line => 
-        base44.entities.OrderLine.update(line.id, {
+      // Update order lines with fulfilled and final billed quantities
+      const updatePromises = orderLines.map(line => {
+        const product = products[line.product_id];
+        const updateData = {
           quantity_fulfilled: fulfilledQuantities[line.id] || 0
-        })
-      );
+        };
+
+        // If product has final measurement, save final billed quantity
+        if (product?.has_final_measurement) {
+          updateData.final_billed_quantity = finalBilledQuantities[line.id] || 0;
+        }
+
+        return base44.entities.OrderLine.update(line.id, updateData);
+      });
       await Promise.all(updatePromises);
 
-      // Calculate final total
+      // Calculate final total based on final billed quantities or fulfilled quantities
       const totalFinal = orderLines.reduce((sum, line) => {
-        const qty = fulfilledQuantities[line.id] || 0;
+        const product = products[line.product_id];
+        const qty = product?.has_final_measurement 
+          ? (finalBilledQuantities[line.id] || 0)
+          : (fulfilledQuantities[line.id] || 0);
         return sum + (qty * line.unit_price);
       }, 0);
 
@@ -111,8 +158,13 @@ export default function WarehouseOrderDetail() {
   };
 
   const updateQuantity = (lineId, value) => {
-    const numValue = Math.max(0, parseInt(value) || 0);
+    const numValue = Math.max(0, parseFloat(value) || 0);
     setFulfilledQuantities({ ...fulfilledQuantities, [lineId]: numValue });
+  };
+
+  const updateFinalBilledQuantity = (lineId, value) => {
+    const numValue = Math.max(0, parseFloat(value) || 0);
+    setFinalBilledQuantities({ ...finalBilledQuantities, [lineId]: numValue });
   };
 
   const hasShortages = orderLines.some(line => 
@@ -224,7 +276,9 @@ export default function WarehouseOrderDetail() {
         <CardContent>
           <div className="space-y-4">
             {orderLines.map((line) => {
+              const product = products[line.product_id];
               const fulfilled = fulfilledQuantities[line.id] || 0;
+              const finalBilled = finalBilledQuantities[line.id] || 0;
               const isShort = fulfilled < line.quantity_requested;
               
               return (
@@ -232,34 +286,61 @@ export default function WarehouseOrderDetail() {
                   key={line.id} 
                   className={`p-4 rounded-xl border ${isShort ? 'border-amber-200 bg-amber-50' : 'border-slate-200 bg-slate-50'}`}
                 >
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="flex-1">
-                      <p className="font-medium text-slate-800">{line.product_name}</p>
-                      <p className="text-sm text-slate-500">{line.product_sku} · {line.unit}</p>
-                      <p className="text-sm text-slate-600 mt-1">
-                        Solicitado: <span className="font-medium">{line.quantity_requested}</span>
-                      </p>
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <p className="font-medium text-slate-800">{line.product_name}</p>
+                        <p className="text-sm text-slate-500">{line.product_sku} · {line.unit}</p>
+                        <p className="text-sm text-slate-600 mt-1">
+                          Solicitado: <span className="font-medium">{line.quantity_requested} {line.quantity_requested_unit || line.unit}</span>
+                        </p>
+                      </div>
                     </div>
                     
-                    {order.status === 'en_surtido' ? (
-                      <div className="flex items-center gap-3">
-                        <label className="text-sm text-slate-600">Surtido:</label>
-                        <Input
-                          type="number"
-                          min="0"
-                          value={fulfilled}
-                          onChange={(e) => updateQuantity(line.id, e.target.value)}
-                          className="w-24 text-center"
-                        />
-                        {isShort && (
-                          <AlertTriangle className="text-amber-500" size={20} />
+                    {order.status === 'en_surtido' && (
+                      <div className="space-y-3 pt-3 border-t border-slate-200">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <Label className="text-xs text-slate-600 mb-1.5 block">
+                              Cantidad Surtida
+                            </Label>
+                            <div className="flex items-center gap-2">
+                              <Input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={fulfilled}
+                                onChange={(e) => updateQuantity(line.id, e.target.value)}
+                                className="text-center"
+                              />
+                              {isShort && (
+                                <AlertTriangle className="text-amber-500 flex-shrink-0" size={20} />
+                              )}
+                            </div>
+                          </div>
+
+                          {product?.has_final_measurement && (
+                            <div>
+                              <Label className="text-xs text-slate-600 mb-1.5 block">
+                                Medición Final ({product.final_measurement_unit})
+                              </Label>
+                              <Input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={finalBilled}
+                                onChange={(e) => updateFinalBilledQuantity(line.id, e.target.value)}
+                                className="text-center bg-blue-50"
+                              />
+                            </div>
+                          )}
+                        </div>
+
+                        {product?.has_final_measurement && (
+                          <p className="text-xs text-blue-600 bg-blue-50 p-2 rounded">
+                            Se cobrará por: {finalBilled} {product.final_measurement_unit}
+                          </p>
                         )}
-                      </div>
-                    ) : (
-                      <div className="text-right">
-                        <p className="text-sm text-slate-500">
-                          Precio: ${line.unit_price?.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
-                        </p>
                       </div>
                     )}
                   </div>

@@ -58,7 +58,7 @@ export default function Layout({ children, currentPageName }) {
       );
     }
     
-    if (userRole === 'bodega') {
+    if (userRole === 'bodega' || userRole === 'bodega_secos' || userRole === 'bodega_refrigerados') {
       items.push(
         { name: 'Pedidos a Surtir', icon: Warehouse, page: 'WarehouseOrders' }
       );
@@ -97,6 +97,8 @@ export default function Layout({ children, currentPageName }) {
     const labels = {
       cliente: 'Cliente',
       bodega: 'Bodega',
+      bodega_secos: 'Bodega Secos',
+      bodega_refrigerados: 'Bodega Refrigerados',
       vendedor: 'Vendedor',
       admin: 'Administrador'
     };
