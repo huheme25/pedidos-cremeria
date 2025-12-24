@@ -115,17 +115,21 @@ export default function AdminProductsImport() {
 
       if (extraction.status === 'error') {
         toast.error(extraction.details || 'Error al procesar el archivo');
+        console.error('Extraction error:', extraction);
         setUploading(false);
         return;
       }
 
       const products = extraction.output || [];
-      
+
       if (products.length === 0) {
         toast.error('No se encontraron productos en el archivo');
+        console.log('Extraction result:', extraction);
         setUploading(false);
         return;
       }
+
+      console.log(`Extracted ${products.length} products from file`);
 
       // Validate categories and units
       const validCategories = ['quesos', 'cremas', 'mantequillas', 'yogures', 'leches', 'otros'];
@@ -144,16 +148,31 @@ export default function AdminProductsImport() {
         is_active: p.is_active !== false
       }));
 
-      // Import products
-      const created = await base44.entities.Product.bulkCreate(normalizedProducts);
+      // Import products in batches if many
+      const batchSize = 50;
+      const batches = [];
+      for (let i = 0; i < normalizedProducts.length; i += batchSize) {
+        batches.push(normalizedProducts.slice(i, i + batchSize));
+      }
+
+      let totalCreated = 0;
+      for (let i = 0; i < batches.length; i++) {
+        try {
+          const created = await base44.entities.Product.bulkCreate(batches[i]);
+          totalCreated += created.length;
+          console.log(`Imported batch ${i + 1}/${batches.length}: ${created.length} products`);
+        } catch (batchError) {
+          console.error(`Error in batch ${i + 1}:`, batchError);
+        }
+      }
 
       setResults({
         success: true,
         total: normalizedProducts.length,
-        created: created.length
+        created: totalCreated
       });
 
-      toast.success(`${created.length} productos importados exitosamente`);
+      toast.success(`${totalCreated} productos importados exitosamente`);
     } catch (error) {
       console.error(error);
       toast.error('Error al importar productos');

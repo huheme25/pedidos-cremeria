@@ -135,6 +135,7 @@ export default function AdminUsers() {
       bodega: 'Bodega',
       bodega_secos: 'Bodega Secos',
       bodega_refrigerados: 'Bodega Refrigerados',
+      bodega_barra: 'Bodega Barra',
       vendedor: 'Vendedor',
       admin: 'Administrador'
     };
@@ -147,6 +148,7 @@ export default function AdminUsers() {
       bodega: 'bg-green-100 text-green-800',
       bodega_secos: 'bg-teal-100 text-teal-800',
       bodega_refrigerados: 'bg-cyan-100 text-cyan-800',
+      bodega_barra: 'bg-orange-100 text-orange-800',
       vendedor: 'bg-purple-100 text-purple-800',
       admin: 'bg-red-100 text-red-800'
     };
@@ -269,6 +271,7 @@ export default function AdminUsers() {
                   <SelectItem value="bodega">Bodega (General)</SelectItem>
                   <SelectItem value="bodega_secos">Bodega Secos</SelectItem>
                   <SelectItem value="bodega_refrigerados">Bodega Refrigerados</SelectItem>
+                  <SelectItem value="bodega_barra">Bodega Barra</SelectItem>
                   <SelectItem value="vendedor">Vendedor</SelectItem>
                   <SelectItem value="admin">Administrador</SelectItem>
                 </SelectContent>

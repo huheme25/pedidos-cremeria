@@ -79,6 +79,11 @@ export default function WarehouseOrderDetail() {
             const product = productsMap[l.product_id];
             return product?.warehouse_type === 'refrigerados' || product?.warehouse_type === 'mixto';
           });
+        } else if (currentUser.user_role === 'bodega_barra') {
+          filteredLines = lines.filter(l => {
+            const product = productsMap[l.product_id];
+            return product?.warehouse_type === 'barra' || product?.warehouse_type === 'mixto';
+          });
         }
 
         setOrderLines(filteredLines);

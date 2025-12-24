@@ -37,6 +37,8 @@ export default function WarehouseOrders() {
         setWarehouseFilter('secos');
       } else if (currentUser.user_role === 'bodega_refrigerados') {
         setWarehouseFilter('refrigerados');
+      } else if (currentUser.user_role === 'bodega_barra') {
+        setWarehouseFilter('barra');
       }
     } catch (error) {
       console.error(error);
@@ -116,6 +118,7 @@ export default function WarehouseOrders() {
               <SelectItem value="all">Todas las bodegas</SelectItem>
               <SelectItem value="secos">Secos</SelectItem>
               <SelectItem value="refrigerados">Refrigerados</SelectItem>
+              <SelectItem value="barra">Barra</SelectItem>
             </SelectContent>
           </Select>
         )}

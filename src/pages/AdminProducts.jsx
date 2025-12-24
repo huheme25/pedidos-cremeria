@@ -46,6 +46,14 @@ export default function AdminProducts() {
     category: 'quesos',
     unit: 'pieza',
     wholesale_price: '',
+    warehouse_type: 'refrigerados',
+    has_final_measurement: false,
+    final_measurement_unit: '',
+    price_list_1: '',
+    price_list_2: '',
+    price_list_3: '',
+    price_list_4: '',
+    price_list_5: '',
     image_url: '',
     is_active: true
   });
@@ -83,6 +91,14 @@ export default function AdminProducts() {
       category: 'quesos',
       unit: 'pieza',
       wholesale_price: '',
+      warehouse_type: 'refrigerados',
+      has_final_measurement: false,
+      final_measurement_unit: '',
+      price_list_1: '',
+      price_list_2: '',
+      price_list_3: '',
+      price_list_4: '',
+      price_list_5: '',
       image_url: '',
       is_active: true
     });
@@ -97,6 +113,14 @@ export default function AdminProducts() {
       category: product.category || 'quesos',
       unit: product.unit || 'pieza',
       wholesale_price: product.wholesale_price?.toString() || '',
+      warehouse_type: product.warehouse_type || 'refrigerados',
+      has_final_measurement: product.has_final_measurement || false,
+      final_measurement_unit: product.final_measurement_unit || '',
+      price_list_1: product.price_list_1?.toString() || '',
+      price_list_2: product.price_list_2?.toString() || '',
+      price_list_3: product.price_list_3?.toString() || '',
+      price_list_4: product.price_list_4?.toString() || '',
+      price_list_5: product.price_list_5?.toString() || '',
       image_url: product.image_url || '',
       is_active: product.is_active !== false
     });
@@ -113,7 +137,12 @@ export default function AdminProducts() {
     try {
       const data = {
         ...formData,
-        wholesale_price: parseFloat(formData.wholesale_price)
+        wholesale_price: parseFloat(formData.wholesale_price) || 0,
+        price_list_1: formData.price_list_1 ? parseFloat(formData.price_list_1) : undefined,
+        price_list_2: formData.price_list_2 ? parseFloat(formData.price_list_2) : undefined,
+        price_list_3: formData.price_list_3 ? parseFloat(formData.price_list_3) : undefined,
+        price_list_4: formData.price_list_4 ? parseFloat(formData.price_list_4) : undefined,
+        price_list_5: formData.price_list_5 ? parseFloat(formData.price_list_5) : undefined,
       };
 
       if (editingProduct) {
@@ -339,6 +368,102 @@ export default function AdminProducts() {
                   onChange={(e) => setFormData({ ...formData, wholesale_price: e.target.value })}
                   placeholder="0.00"
                 />
+              </div>
+              <div>
+                <Label>Tipo de Bodega</Label>
+                <Select 
+                  value={formData.warehouse_type} 
+                  onValueChange={(v) => setFormData({ ...formData, warehouse_type: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="secos">Secos</SelectItem>
+                    <SelectItem value="refrigerados">Refrigerados</SelectItem>
+                    <SelectItem value="barra">Barra</SelectItem>
+                    <SelectItem value="mixto">Mixto</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="sm:col-span-2 space-y-3 border-t pt-3">
+                <Label className="text-sm font-semibold">Listas de Precios (opcional)</Label>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                  <div>
+                    <Label className="text-xs">Lista 1</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.price_list_1}
+                      onChange={(e) => setFormData({ ...formData, price_list_1: e.target.value })}
+                      placeholder="0.00"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Lista 2</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.price_list_2}
+                      onChange={(e) => setFormData({ ...formData, price_list_2: e.target.value })}
+                      placeholder="0.00"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Lista 3</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.price_list_3}
+                      onChange={(e) => setFormData({ ...formData, price_list_3: e.target.value })}
+                      placeholder="0.00"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Lista 4</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.price_list_4}
+                      onChange={(e) => setFormData({ ...formData, price_list_4: e.target.value })}
+                      placeholder="0.00"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Lista 5</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.price_list_5}
+                      onChange={(e) => setFormData({ ...formData, price_list_5: e.target.value })}
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="sm:col-span-2 space-y-2 border-t pt-3">
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={formData.has_final_measurement}
+                    onCheckedChange={(v) => setFormData({ ...formData, has_final_measurement: v })}
+                  />
+                  <Label>Requiere medición final diferente</Label>
+                </div>
+                {formData.has_final_measurement && (
+                  <div>
+                    <Label className="text-xs">Unidad de medición final</Label>
+                    <Input
+                      value={formData.final_measurement_unit}
+                      onChange={(e) => setFormData({ ...formData, final_measurement_unit: e.target.value })}
+                      placeholder="kg, litros, etc."
+                    />
+                  </div>
+                )}
               </div>
               <div className="flex items-center gap-2">
                 <Switch
