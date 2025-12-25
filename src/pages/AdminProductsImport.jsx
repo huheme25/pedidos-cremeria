@@ -79,6 +79,43 @@ export default function AdminProductsImport() {
     reader.readAsText(file);
   };
 
+  const parseCSV = (text) => {
+    const lines = text.split('\n').filter(line => line.trim());
+    if (lines.length < 2) return [];
+
+    const headers = lines[0].split(',').map(h => h.trim());
+    const products = [];
+
+    for (let i = 1; i < lines.length; i++) {
+      const values = [];
+      let current = '';
+      let inQuotes = false;
+
+      for (let j = 0; j < lines[i].length; j++) {
+        const char = lines[i][j];
+        if (char === '"') {
+          inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+          values.push(current.trim());
+          current = '';
+        } else {
+          current += char;
+        }
+      }
+      values.push(current.trim());
+
+      if (values.length >= headers.length) {
+        const product = {};
+        headers.forEach((header, idx) => {
+          product[header] = values[idx];
+        });
+        products.push(product);
+      }
+    }
+
+    return products;
+  };
+
   const handleImport = async () => {
     if (!file) {
       toast.error('Selecciona un archivo');
@@ -87,75 +124,70 @@ export default function AdminProductsImport() {
 
     setUploading(true);
     try {
-      // Upload file
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
-
-      // Define expected schema
-      const schema = {
-        type: "array",
-        items: {
-          type: "object",
-          properties: {
-            sku: { type: "string" },
-            name: { type: "string" },
-            category: { type: "string" },
-            unit: { type: "string" },
-            wholesale_price: { type: "number" },
-            is_active: { type: "boolean" }
-          },
-          required: ["sku", "name", "category", "unit", "wholesale_price"]
-        }
-      };
-
-      // Extract data using LLM
-      const extraction = await base44.integrations.Core.ExtractDataFromUploadedFile({
-        file_url,
-        json_schema: schema
-      });
-
-      if (extraction.status === 'error') {
-        toast.error(extraction.details || 'Error al procesar el archivo');
-        console.error('Extraction error:', extraction);
-        setUploading(false);
-        return;
-      }
-
-      const products = extraction.output || [];
+      // Read CSV file directly
+      const text = await file.text();
+      const products = parseCSV(text);
 
       if (products.length === 0) {
         toast.error('No se encontraron productos en el archivo');
-        console.log('Extraction result:', extraction);
         setUploading(false);
         return;
       }
 
-      console.log(`Extracted ${products.length} products from file`);
+      console.log(`Parsed ${products.length} products from CSV`);
 
       // Validate categories and units
       const validCategories = ['quesos', 'cremas', 'mantequillas', 'yogures', 'leches', 'otros'];
       const validUnits = ['caja', 'pieza', 'paquete', 'kg', 'litro'];
+      const validWarehouseTypes = ['secos', 'refrigerados', 'barra', 'mixto'];
 
-      const normalizedProducts = products.map(p => ({
-        sku: p.sku?.toUpperCase() || '',
-        name: p.name || '',
-        category: validCategories.includes(p.category?.toLowerCase()) 
-          ? p.category.toLowerCase() 
-          : 'otros',
-        unit: validUnits.includes(p.unit?.toLowerCase()) 
-          ? p.unit.toLowerCase() 
-          : 'pieza',
-        wholesale_price: parseFloat(p.wholesale_price) || 0,
-        is_active: p.is_active !== false
-      }));
+      const normalizedProducts = products.map(p => {
+        const normalized = {
+          sku: p.sku?.toUpperCase() || '',
+          name: p.name || '',
+          category: validCategories.includes(p.category?.toLowerCase()) 
+            ? p.category.toLowerCase() 
+            : 'otros',
+          unit: validUnits.includes(p.unit?.toLowerCase()) 
+            ? p.unit.toLowerCase() 
+            : 'pieza',
+          wholesale_price: parseFloat(p.wholesale_price) || 0,
+          warehouse_type: validWarehouseTypes.includes(p.warehouse_type?.toLowerCase())
+            ? p.warehouse_type.toLowerCase()
+            : 'refrigerados',
+          is_active: p.is_active?.toLowerCase() !== 'false'
+        };
 
-      // Import products in batches if many
-      const batchSize = 50;
+        // Add optional price lists
+        if (p.price_list_1) normalized.price_list_1 = parseFloat(p.price_list_1);
+        if (p.price_list_2) normalized.price_list_2 = parseFloat(p.price_list_2);
+        if (p.price_list_3) normalized.price_list_3 = parseFloat(p.price_list_3);
+        if (p.price_list_4) normalized.price_list_4 = parseFloat(p.price_list_4);
+        if (p.price_list_5) normalized.price_list_5 = parseFloat(p.price_list_5);
+
+        // Handle final measurement
+        if (p.has_final_measurement?.toLowerCase() === 'true') {
+          normalized.has_final_measurement = true;
+          if (p.final_measurement_unit) {
+            normalized.final_measurement_unit = p.final_measurement_unit;
+          }
+        }
+
+        return normalized;
+      }).filter(p => p.sku && p.name);
+
+      console.log(`Normalized ${normalizedProducts.length} valid products`);
+
+      // Import products in batches
+      const batchSize = 100;
       const batches = [];
       for (let i = 0; i < normalizedProducts.length; i += batchSize) {
         batches.push(normalizedProducts.slice(i, i + batchSize));
       }
 
       let totalCreated = 0;
+      let errors = 0;
+
       for (let i = 0; i < batches.length; i++) {
         try {
           const created = await base44.entities.Product.bulkCreate(batches[i]);
@@ -163,16 +195,22 @@ export default function AdminProductsImport() {
           console.log(`Imported batch ${i + 1}/${batches.length}: ${created.length} products`);
         } catch (batchError) {
           console.error(`Error in batch ${i + 1}:`, batchError);
+          errors++;
         }
       }
 
       setResults({
         success: true,
         total: normalizedProducts.length,
-        created: totalCreated
+        created: totalCreated,
+        errors: errors
       });
 
-      toast.success(`${totalCreated} productos importados exitosamente`);
+      if (errors > 0) {
+        toast.success(`${totalCreated} productos importados (${errors} lotes con errores)`);
+      } else {
+        toast.success(`${totalCreated} productos importados exitosamente`);
+      }
     } catch (error) {
       console.error(error);
       toast.error('Error al importar productos');
@@ -186,10 +224,11 @@ export default function AdminProductsImport() {
   };
 
   const downloadTemplate = () => {
-    const template = `sku,name,category,unit,wholesale_price,is_active
-QSO001,Queso Oaxaca 1kg,quesos,kg,145.00,true
-CRM001,Crema Ácida 1L,cremas,litro,52.00,true
-MNT001,Mantequilla Sin Sal 250g,mantequillas,pieza,45.00,true`;
+    const template = `sku,name,category,unit,wholesale_price,price_list_1,price_list_2,price_list_3,price_list_4,price_list_5,warehouse_type,has_final_measurement,final_measurement_unit,is_active
+QSO001,Queso Oaxaca 1kg,quesos,kg,145.00,150.00,155.00,160.00,165.00,170.00,refrigerados,false,,true
+CRM001,Crema Ácida 1L,cremas,litro,52.00,55.00,58.00,60.00,62.00,65.00,refrigerados,false,,true
+MNT001,Mantequilla Sin Sal 250g,mantequillas,pieza,45.00,48.00,50.00,52.00,54.00,56.00,refrigerados,false,,true
+QSO002,Queso Crema Media Pieza,quesos,pieza,75.00,78.00,80.00,82.00,84.00,86.00,barra,true,kg,true`;
     
     const blob = new Blob([template], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
@@ -224,12 +263,16 @@ MNT001,Mantequilla Sin Sal 250g,mantequillas,pieza,45.00,true`;
               El archivo CSV debe contener las siguientes columnas:
             </p>
             <ul className="text-sm text-slate-600 space-y-1 list-disc list-inside">
-              <li><strong>sku:</strong> Clave del producto</li>
-              <li><strong>name:</strong> Nombre del producto</li>
-              <li><strong>category:</strong> quesos, cremas, mantequillas, yogures, leches, otros</li>
-              <li><strong>unit:</strong> caja, pieza, paquete, kg, litro</li>
-              <li><strong>wholesale_price:</strong> Precio mayorista</li>
-              <li><strong>is_active:</strong> true o false (opcional)</li>
+              <li><strong>sku:</strong> Clave del producto (requerido)</li>
+              <li><strong>name:</strong> Nombre del producto (requerido)</li>
+              <li><strong>category:</strong> quesos, cremas, mantequillas, yogures, leches, otros (requerido)</li>
+              <li><strong>unit:</strong> caja, pieza, paquete, kg, litro (requerido)</li>
+              <li><strong>wholesale_price:</strong> Precio mayorista (requerido)</li>
+              <li><strong>price_list_1 a 5:</strong> Listas de precios (opcional)</li>
+              <li><strong>warehouse_type:</strong> secos, refrigerados, barra, mixto (opcional)</li>
+              <li><strong>has_final_measurement:</strong> true o false (opcional)</li>
+              <li><strong>final_measurement_unit:</strong> kg, litros, etc. (si has_final_measurement es true)</li>
+              <li><strong>is_active:</strong> true o false (opcional, default: true)</li>
             </ul>
             <Button 
               variant="outline" 
@@ -334,10 +377,11 @@ MNT001,Mantequilla Sin Sal 250g,mantequillas,pieza,45.00,true`;
                   <div>
                     <p className="font-semibold text-green-800">
                       ¡Importación Exitosa!
-                    </p>
-                    <p className="text-sm text-green-700">
+                      </p>
+                      <p className="text-sm text-green-700">
                       Se importaron {results.created} de {results.total} productos
-                    </p>
+                      {results.errors > 0 && ` (${results.errors} lotes con errores)`}
+                      </p>
                   </div>
                 </>
               ) : (
