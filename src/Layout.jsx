@@ -51,25 +51,32 @@ export default function Layout({ children, currentPageName }) {
   const getNavItems = () => {
     const items = [];
     
+    // Cliente role needs a client assigned
     if (userRole === 'cliente') {
+      if (!user?.assigned_client_id) {
+        return []; // No navigation if client role without assigned client
+      }
       items.push(
         { name: 'Mis Pedidos', icon: ShoppingCart, page: 'ClientOrders' },
         { name: 'Nuevo Pedido', icon: Package, page: 'NewOrder' }
       );
     }
     
+    // Bodega roles don't need client assignment
     if (userRole === 'bodega_secos' || userRole === 'bodega_refrigerados' || userRole === 'bodega_barra') {
       items.push(
         { name: 'Pedidos a Surtir', icon: Warehouse, page: 'WarehouseOrders' }
       );
     }
     
+    // Vendedor role doesn't need client assignment either
     if (userRole === 'vendedor') {
       items.push(
         { name: 'Pedidos Clientes', icon: ClipboardList, page: 'SellerOrders' }
       );
     }
     
+    // Admin role
     if (userRole === 'admin') {
       items.push(
         { name: 'Dashboard', icon: Home, page: 'AdminDashboard' },
@@ -89,6 +96,29 @@ export default function Layout({ children, currentPageName }) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-600"></div>
+      </div>
+    );
+  }
+
+  // Show error only for cliente role without assigned client
+  if (userRole === 'cliente' && !user?.assigned_client_id) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white rounded-xl shadow-lg border border-slate-200 p-8">
+          <div className="text-center">
+            <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Package className="text-amber-600" size={32} />
+            </div>
+            <h2 className="text-2xl font-bold text-slate-800 mb-2">Sin Cliente Asignado</h2>
+            <p className="text-slate-600 mb-6">
+              Tu cuenta de cliente aún no tiene un cliente asignado. Contacta al administrador para que te asigne uno.
+            </p>
+            <Button onClick={handleLogout} variant="outline" className="w-full">
+              <LogOut size={16} className="mr-2" />
+              Cerrar Sesión
+            </Button>
+          </div>
+        </div>
       </div>
     );
   }
