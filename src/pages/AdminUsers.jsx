@@ -225,7 +225,12 @@ export default function AdminUsers() {
                       {user.user_role === 'vendedor' && user.assigned_clients?.length > 0 && (
                         <Badge variant="outline" className="text-slate-600">
                           <Building2 size={12} className="mr-1" />
-                          {user.assigned_clients.length} clientes
+                          {user.assigned_clients.length} clientes asignados
+                        </Badge>
+                      )}
+                      {(user.user_role === 'bodega_secos' || user.user_role === 'bodega_refrigerados' || user.user_role === 'bodega_barra') && (
+                        <Badge variant="outline" className="text-slate-600">
+                          Todos los pedidos
                         </Badge>
                       )}
                     </div>
