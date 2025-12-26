@@ -58,7 +58,7 @@ export default function Layout({ children, currentPageName }) {
       );
     }
     
-    if (userRole === 'bodega' || userRole === 'bodega_secos' || userRole === 'bodega_refrigerados' || userRole === 'bodega_barra') {
+    if (userRole === 'bodega_secos' || userRole === 'bodega_refrigerados' || userRole === 'bodega_barra') {
       items.push(
         { name: 'Pedidos a Surtir', icon: Warehouse, page: 'WarehouseOrders' }
       );

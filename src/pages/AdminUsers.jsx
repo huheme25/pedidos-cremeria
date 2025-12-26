@@ -268,7 +268,6 @@ export default function AdminUsers() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="cliente">Cliente</SelectItem>
-                  <SelectItem value="bodega">Bodega (General)</SelectItem>
                   <SelectItem value="bodega_secos">Bodega Secos</SelectItem>
                   <SelectItem value="bodega_refrigerados">Bodega Refrigerados</SelectItem>
                   <SelectItem value="bodega_barra">Bodega Barra</SelectItem>
