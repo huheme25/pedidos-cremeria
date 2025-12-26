@@ -40,6 +40,8 @@ export default function NewOrder() {
   const [user, setUser] = useState(null);
   const [client, setClient] = useState(null);
   const [products, setProducts] = useState([]);
+  const [productVariants, setProductVariants] = useState({});
+  const [selectedVariants, setSelectedVariants] = useState({});
   const [cart, setCart] = useState([]);
   const [notes, setNotes] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
@@ -72,8 +74,30 @@ export default function NewOrder() {
       // Get client's price list
       const priceList = clientInfo?.assigned_price_list || 'price_list_1';
 
+      // Separate master products, standalone products, and variants
+      const masterProducts = productsList.filter(p => p.is_master_product === true);
+      const standaloneProducts = productsList.filter(p => !p.is_master_product && !p.master_product_id);
+      const variants = productsList.filter(p => p.master_product_id);
+      
+      // Group variants by master product
+      const variantsMap = {};
+      variants.forEach(variant => {
+        if (!variantsMap[variant.master_product_id]) {
+          variantsMap[variant.master_product_id] = [];
+        }
+        variantsMap[variant.master_product_id].push(variant);
+      });
+      
+      // Sort variants by variant_order
+      Object.keys(variantsMap).forEach(masterId => {
+        variantsMap[masterId].sort((a, b) => (a.variant_order || 0) - (b.variant_order || 0));
+      });
+      
+      setProductVariants(variantsMap);
+
       // Map products with correct price based on client's price list
-      const productsWithPrice = productsList.map(p => {
+      const allDisplayProducts = [...masterProducts, ...standaloneProducts, ...variants];
+      const productsWithPrice = allDisplayProducts.map(p => {
         const clientPrice = p[priceList] || p.wholesale_price;
         const effectivePrice = (p.is_on_offer && p.offer_price && p.offer_price < clientPrice) 
           ? p.offer_price 
@@ -87,7 +111,7 @@ export default function NewOrder() {
         };
       });
 
-      setProducts(productsWithPrice);
+      setProducts(productsWithPrice.filter(p => p.is_master_product || !p.master_product_id));
     } catch (error) {
       console.error(error);
     } finally {
@@ -106,6 +130,11 @@ export default function NewOrder() {
   const categories = [...new Set(products.map(p => p.category))];
 
   const addToCart = (product) => {
+    if (product.is_master_product) {
+      toast.error('Selecciona una presentación primero');
+      return;
+    }
+
     const existing = cart.find(item => item.product_id === product.id);
     if (existing) {
       setCart(cart.map(item => 
@@ -264,10 +293,30 @@ export default function NewOrder() {
 
           <div className="grid sm:grid-cols-2 gap-3">
             {filteredProducts.map(product => {
-              const cartItem = cart.find(item => item.product_id === product.id);
+              const hasVariants = product.is_master_product && productVariants[product.id]?.length > 0;
+              const variants = hasVariants ? productVariants[product.id] : null;
+              const selectedVariantId = selectedVariants[product.id];
+              
+              let displayProduct = product;
+              if (selectedVariantId) {
+                const foundVariant = variants?.find(v => v.id === selectedVariantId);
+                if (foundVariant) {
+                  displayProduct = {
+                    ...foundVariant,
+                    clientPrice: foundVariant[client?.assigned_price_list || 'price_list_1'] || foundVariant.wholesale_price,
+                    effectivePrice: (foundVariant.is_on_offer && foundVariant.offer_price) 
+                      ? foundVariant.offer_price 
+                      : (foundVariant[client?.assigned_price_list || 'price_list_1'] || foundVariant.wholesale_price),
+                    isDiscounted: foundVariant.is_on_offer && foundVariant.offer_price < (foundVariant[client?.assigned_price_list || 'price_list_1'] || foundVariant.wholesale_price)
+                  };
+                }
+              }
+
+              const cartItem = cart.find(item => item.product_id === displayProduct.id);
+              
               return (
                 <Card key={product.id} className="border-slate-200 relative">
-                  {product.is_on_offer && (
+                  {displayProduct.is_on_offer && (
                     <Badge className="absolute top-2 right-2 bg-red-500 text-white">
                       <Tag size={12} className="mr-1" />
                       Oferta
@@ -276,70 +325,100 @@ export default function NewOrder() {
                   <CardContent className="p-4">
                     <div className="flex gap-3">
                       <div className="w-16 h-16 bg-slate-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                        {product.image_url ? (
-                          <img src={product.image_url} alt={product.name} className="w-full h-full object-cover rounded-lg" />
+                        {displayProduct.image_url ? (
+                          <img src={displayProduct.image_url} alt={displayProduct.name} className="w-full h-full object-cover rounded-lg" />
                         ) : (
                           <Package className="text-slate-400" size={24} />
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-slate-800 truncate">{product.name}</p>
-                        <p className="text-xs text-slate-500">{product.sku} · {product.unit}</p>
-                        <div className="mt-1">
-                          {product.isDiscounted ? (
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs line-through text-slate-400">
-                                ${product.clientPrice?.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
-                              </span>
-                              <span className="text-amber-600 font-semibold">
-                                ${product.effectivePrice?.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
-                              </span>
-                            </div>
-                          ) : (
-                            <p className="text-amber-600 font-semibold">
-                              ${product.effectivePrice?.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
-                            </p>
-                          )}
-                          {product.offer_description && (
-                            <p className="text-xs text-green-600 font-medium">{product.offer_description}</p>
-                          )}
-                        </div>
+                        <p className="text-xs text-slate-500">{displayProduct.sku} · {displayProduct.unit}</p>
+                        
+                        {hasVariants && (
+                          <div className="mt-2">
+                            <Select
+                              value={selectedVariantId || ''}
+                              onValueChange={(variantId) => {
+                                setSelectedVariants({ ...selectedVariants, [product.id]: variantId });
+                              }}
+                            >
+                              <SelectTrigger className="h-8 text-xs">
+                                <SelectValue placeholder="Presentación" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {variants.map(variant => {
+                                  const varPrice = variant[client?.assigned_price_list || 'price_list_1'] || variant.wholesale_price;
+                                  return (
+                                    <SelectItem key={variant.id} value={variant.id}>
+                                      {variant.variant_name} - ${varPrice.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                                    </SelectItem>
+                                  );
+                                })}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
+
+                        {(!hasVariants || selectedVariantId) && (
+                          <div className="mt-1">
+                            {displayProduct.isDiscounted ? (
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs line-through text-slate-400">
+                                  ${displayProduct.clientPrice?.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                                </span>
+                                <span className="text-amber-600 font-semibold">
+                                  ${displayProduct.effectivePrice?.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                                </span>
+                              </div>
+                            ) : (
+                              <p className="text-amber-600 font-semibold">
+                                ${displayProduct.effectivePrice?.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                              </p>
+                            )}
+                            {displayProduct.offer_description && (
+                              <p className="text-xs text-green-600 font-medium">{displayProduct.offer_description}</p>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                     
-                    <div className="mt-3 flex items-center justify-end gap-2">
-                      {cartItem ? (
-                        <div className="flex items-center gap-2">
+                    {(!hasVariants || selectedVariantId) && (
+                      <div className="mt-3 flex items-center justify-end gap-2">
+                        {cartItem ? (
+                          <div className="flex items-center gap-2">
+                            <Button 
+                              size="icon" 
+                              variant="outline"
+                              className="h-8 w-8"
+                              onClick={() => updateQuantity(displayProduct.id, -1)}
+                            >
+                              <Minus size={14} />
+                            </Button>
+                            <span className="w-8 text-center font-medium">{cartItem.quantity}</span>
+                            <Button 
+                              size="icon" 
+                              variant="outline"
+                              className="h-8 w-8"
+                              onClick={() => updateQuantity(displayProduct.id, 1)}
+                            >
+                              <Plus size={14} />
+                            </Button>
+                          </div>
+                        ) : (
                           <Button 
-                            size="icon" 
+                            size="sm"
                             variant="outline"
-                            className="h-8 w-8"
-                            onClick={() => updateQuantity(product.id, -1)}
+                            onClick={() => addToCart(displayProduct)}
+                            className="border-amber-200 text-amber-700 hover:bg-amber-50"
                           >
-                            <Minus size={14} />
+                            <Plus size={16} className="mr-1" />
+                            Agregar
                           </Button>
-                          <span className="w-8 text-center font-medium">{cartItem.quantity}</span>
-                          <Button 
-                            size="icon" 
-                            variant="outline"
-                            className="h-8 w-8"
-                            onClick={() => updateQuantity(product.id, 1)}
-                          >
-                            <Plus size={14} />
-                          </Button>
-                        </div>
-                      ) : (
-                        <Button 
-                          size="sm"
-                          variant="outline"
-                          onClick={() => addToCart(product)}
-                          className="border-amber-200 text-amber-700 hover:bg-amber-50"
-                        >
-                          <Plus size={16} className="mr-1" />
-                          Agregar
-                        </Button>
-                      )}
-                    </div>
+                        )}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               );
