@@ -23,23 +23,44 @@ export default function WarehouseOrders() {
 
   const loadOrders = async () => {
     try {
-      const [currentUser, allOrders] = await Promise.all([
+      const [currentUser, allOrders, allOrderLines, allProducts] = await Promise.all([
         base44.auth.me(),
-        base44.entities.Order.list('-created_date')
+        base44.entities.Order.list('-created_date'),
+        base44.entities.OrderLine.list(),
+        base44.entities.Product.list()
       ]);
       setUser(currentUser);
-      setOrders(allOrders.filter(o => 
-        ['pendiente_revision', 'en_surtido'].includes(o.status)
-      ));
       
-      // Auto-set warehouse filter based on user role
-      if (currentUser.user_role === 'bodega_secos') {
-        setWarehouseFilter('secos');
-      } else if (currentUser.user_role === 'bodega_refrigerados') {
-        setWarehouseFilter('refrigerados');
-      } else if (currentUser.user_role === 'bodega_barra') {
-        setWarehouseFilter('barra');
+      // Create product map
+      const productMap = {};
+      allProducts.forEach(p => {
+        productMap[p.id] = p;
+      });
+      
+      // Filter orders by status
+      const statusFilteredOrders = allOrders.filter(o => 
+        ['pendiente_revision', 'en_surtido'].includes(o.status)
+      );
+      
+      // Filter orders that have products for this warehouse type
+      let relevantOrders = statusFilteredOrders;
+      
+      if (currentUser.user_role === 'bodega_secos' || 
+          currentUser.user_role === 'bodega_refrigerados' || 
+          currentUser.user_role === 'bodega_barra') {
+        
+        const warehouseType = currentUser.user_role.replace('bodega_', '');
+        
+        relevantOrders = statusFilteredOrders.filter(order => {
+          const orderLines = allOrderLines.filter(line => line.order_id === order.id);
+          return orderLines.some(line => {
+            const product = productMap[line.product_id];
+            return product && (product.warehouse_type === warehouseType || product.warehouse_type === 'mixto');
+          });
+        });
       }
+      
+      setOrders(relevantOrders);
     } catch (error) {
       console.error(error);
     } finally {
@@ -109,19 +130,7 @@ export default function WarehouseOrders() {
             className="pl-10"
           />
         </div>
-        {user?.user_role === 'bodega' && (
-          <Select value={warehouseFilter} onValueChange={setWarehouseFilter}>
-            <SelectTrigger className="w-48">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas las bodegas</SelectItem>
-              <SelectItem value="secos">Secos</SelectItem>
-              <SelectItem value="refrigerados">Refrigerados</SelectItem>
-              <SelectItem value="barra">Barra</SelectItem>
-            </SelectContent>
-          </Select>
-        )}
+
       </div>
 
       {filteredOrders.length === 0 ? (
