@@ -76,8 +76,6 @@ export default function NewOrder() {
       const priceList = clientInfo?.assigned_price_list || 'price_list_1';
 
       // Separate master products, standalone products, and variants
-      const masterProducts = productsData.filter(p => p.is_master_product === true);
-      const standaloneProducts = productsData.filter(p => !p.is_master_product && !p.master_product_id);
       const variants = productsData.filter(p => p.master_product_id);
       
       // Group variants by master product
@@ -86,7 +84,19 @@ export default function NewOrder() {
         if (!variantsMap[variant.master_product_id]) {
           variantsMap[variant.master_product_id] = [];
         }
-        variantsMap[variant.master_product_id].push(variant);
+        
+        // Add price information to variant
+        const clientPrice = variant[priceList] || variant.wholesale_price;
+        const effectivePrice = (variant.is_on_offer && variant.offer_price && variant.offer_price < clientPrice) 
+          ? variant.offer_price 
+          : clientPrice;
+        
+        variantsMap[variant.master_product_id].push({
+          ...variant,
+          clientPrice: clientPrice,
+          effectivePrice: effectivePrice,
+          isDiscounted: effectivePrice < clientPrice
+        });
       });
       
       // Sort variants by variant_order
@@ -305,14 +315,8 @@ export default function NewOrder() {
               if (selectedVariantId) {
                 const foundVariant = variants?.find(v => v.id === selectedVariantId);
                 if (foundVariant) {
-                  displayProduct = {
-                    ...foundVariant,
-                    clientPrice: foundVariant[client?.assigned_price_list || 'price_list_1'] || foundVariant.wholesale_price,
-                    effectivePrice: (foundVariant.is_on_offer && foundVariant.offer_price) 
-                      ? foundVariant.offer_price 
-                      : (foundVariant[client?.assigned_price_list || 'price_list_1'] || foundVariant.wholesale_price),
-                    isDiscounted: foundVariant.is_on_offer && foundVariant.offer_price < (foundVariant[client?.assigned_price_list || 'price_list_1'] || foundVariant.wholesale_price)
-                  };
+                  // Variant already has price info from variantsMap
+                  displayProduct = foundVariant;
                 }
               }
 
@@ -351,14 +355,11 @@ export default function NewOrder() {
                                 <SelectValue placeholder="Presentación" />
                               </SelectTrigger>
                               <SelectContent>
-                                {variants.map(variant => {
-                                  const varPrice = variant[client?.assigned_price_list || 'price_list_1'] || variant.wholesale_price;
-                                  return (
-                                    <SelectItem key={variant.id} value={variant.id}>
-                                      {variant.variant_name} - ${varPrice.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
-                                    </SelectItem>
-                                  );
-                                })}
+                                {variants.map(variant => (
+                                  <SelectItem key={variant.id} value={variant.id}>
+                                    {variant.variant_name} - ${variant.effectivePrice?.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                                  </SelectItem>
+                                ))}
                               </SelectContent>
                             </Select>
                           </div>
