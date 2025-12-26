@@ -51,10 +51,12 @@ export default function Layout({ children, currentPageName }) {
   const getNavItems = () => {
     const items = [];
     
-    // Cliente role needs a client assigned
+    // SOLO clientes necesitan tener un cliente asignado
     if (userRole === 'cliente') {
+      // Si es cliente pero no tiene cliente asignado, retornamos vacío
+      // (el componente mostrará un mensaje de error más abajo)
       if (!user?.assigned_client_id) {
-        return []; // No navigation if client role without assigned client
+        return [];
       }
       items.push(
         { name: 'Mis Pedidos', icon: ShoppingCart, page: 'ClientOrders' },
@@ -62,21 +64,21 @@ export default function Layout({ children, currentPageName }) {
       );
     }
     
-    // Bodega roles don't need client assignment
+    // Bodega roles NO necesitan cliente asignado
     if (userRole === 'bodega_secos' || userRole === 'bodega_refrigerados' || userRole === 'bodega_barra') {
       items.push(
         { name: 'Pedidos a Surtir', icon: Warehouse, page: 'WarehouseOrders' }
       );
     }
     
-    // Vendedor role doesn't need client assignment either
+    // Vendedor NO necesita cliente asignado (tiene múltiples clientes)
     if (userRole === 'vendedor') {
       items.push(
         { name: 'Pedidos Clientes', icon: ClipboardList, page: 'SellerOrders' }
       );
     }
     
-    // Admin role
+    // Admin NO necesita cliente asignado
     if (userRole === 'admin') {
       items.push(
         { name: 'Dashboard', icon: Home, page: 'AdminDashboard' },
@@ -100,7 +102,8 @@ export default function Layout({ children, currentPageName }) {
     );
   }
 
-  // Show error only for cliente role without assigned client
+  // IMPORTANTE: Esta validación SOLO aplica para usuarios con rol 'cliente'
+  // Los usuarios de bodega, vendedor y admin NO se ven afectados por esta validación
   if (userRole === 'cliente' && !user?.assigned_client_id) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
