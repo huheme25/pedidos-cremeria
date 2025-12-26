@@ -173,6 +173,20 @@ export default function AdminProductsImport() {
           }
         }
 
+        // Handle variants
+        if (p.is_master_product?.toLowerCase() === 'true') {
+          normalized.is_master_product = true;
+        }
+        if (p.master_product_id) {
+          normalized.master_product_id = p.master_product_id;
+        }
+        if (p.variant_name) {
+          normalized.variant_name = p.variant_name;
+        }
+        if (p.variant_order) {
+          normalized.variant_order = parseInt(p.variant_order) || 0;
+        }
+
         return normalized;
       }).filter(p => p.sku && p.name);
 
@@ -224,11 +238,13 @@ export default function AdminProductsImport() {
   };
 
   const downloadTemplate = () => {
-    const template = `sku,name,category,unit,wholesale_price,price_list_1,price_list_2,price_list_3,price_list_4,price_list_5,warehouse_type,has_final_measurement,final_measurement_unit,is_active
-QSO001,Queso Oaxaca 1kg,quesos,kg,145.00,150.00,155.00,160.00,165.00,170.00,refrigerados,false,,true
-CRM001,Crema Ácida 1L,cremas,litro,52.00,55.00,58.00,60.00,62.00,65.00,refrigerados,false,,true
-MNT001,Mantequilla Sin Sal 250g,mantequillas,pieza,45.00,48.00,50.00,52.00,54.00,56.00,refrigerados,false,,true
-QSO002,Queso Crema Media Pieza,quesos,pieza,75.00,78.00,80.00,82.00,84.00,86.00,barra,true,kg,true`;
+    const template = `sku,name,category,unit,wholesale_price,price_list_1,price_list_2,price_list_3,price_list_4,price_list_5,warehouse_type,has_final_measurement,final_measurement_unit,is_master_product,master_product_id,variant_name,variant_order,is_active
+QSO001M,Queso Oaxaca,quesos,kg,0,0,0,0,0,0,refrigerados,false,,true,,,0,true
+QSO001-1,Queso Oaxaca 1kg,quesos,kg,145.00,150.00,155.00,160.00,165.00,170.00,refrigerados,false,,false,QSO001M,1kg,1,true
+QSO001-2,Queso Oaxaca 500g,quesos,kg,75.00,78.00,80.00,82.00,84.00,86.00,refrigerados,false,,false,QSO001M,500g,2,true
+CRM001,Crema Ácida 1L,cremas,litro,52.00,55.00,58.00,60.00,62.00,65.00,refrigerados,false,,false,,,0,true
+MNT001,Mantequilla Sin Sal 250g,mantequillas,pieza,45.00,48.00,50.00,52.00,54.00,56.00,refrigerados,false,,false,,,0,true
+QSO002,Queso Crema Media Pieza,quesos,pieza,75.00,78.00,80.00,82.00,84.00,86.00,barra,true,kg,false,,,0,true`;
     
     const blob = new Blob([template], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
@@ -272,6 +288,10 @@ QSO002,Queso Crema Media Pieza,quesos,pieza,75.00,78.00,80.00,82.00,84.00,86.00,
               <li><strong>warehouse_type:</strong> secos, refrigerados, barra, mixto (opcional)</li>
               <li><strong>has_final_measurement:</strong> true o false (opcional)</li>
               <li><strong>final_measurement_unit:</strong> kg, litros, etc. (si has_final_measurement es true)</li>
+              <li><strong>is_master_product:</strong> true o false (para productos con variantes)</li>
+              <li><strong>master_product_id:</strong> SKU del producto maestro (si es variante)</li>
+              <li><strong>variant_name:</strong> nombre de la variante (ej: 1kg, 500g)</li>
+              <li><strong>variant_order:</strong> orden de aparición (1, 2, 3...)</li>
               <li><strong>is_active:</strong> true o false (opcional, default: true)</li>
             </ul>
             <Button 

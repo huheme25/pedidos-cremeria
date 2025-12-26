@@ -8,8 +8,21 @@ import {
   Package, 
   Pencil,
   DollarSign,
-  Upload
+  Upload,
+  MoreVertical
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -54,9 +67,14 @@ export default function AdminProducts() {
     price_list_3: '',
     price_list_4: '',
     price_list_5: '',
+    is_master_product: false,
+    master_product_id: '',
+    variant_name: '',
+    variant_order: '',
     image_url: '',
     is_active: true
   });
+  const [masterProducts, setMasterProducts] = useState([]);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -67,6 +85,9 @@ export default function AdminProducts() {
     try {
       const productsData = await base44.entities.Product.list();
       setProducts(productsData);
+      // Load master products for variant selection
+      const masters = productsData.filter(p => p.is_master_product === true);
+      setMasterProducts(masters);
     } catch (error) {
       console.error(error);
     } finally {
@@ -99,6 +120,10 @@ export default function AdminProducts() {
       price_list_3: '',
       price_list_4: '',
       price_list_5: '',
+      is_master_product: false,
+      master_product_id: '',
+      variant_name: '',
+      variant_order: '',
       image_url: '',
       is_active: true
     });
@@ -121,6 +146,10 @@ export default function AdminProducts() {
       price_list_3: product.price_list_3?.toString() || '',
       price_list_4: product.price_list_4?.toString() || '',
       price_list_5: product.price_list_5?.toString() || '',
+      is_master_product: product.is_master_product || false,
+      master_product_id: product.master_product_id || '',
+      variant_name: product.variant_name || '',
+      variant_order: product.variant_order?.toString() || '',
       image_url: product.image_url || '',
       is_active: product.is_active !== false
     });
@@ -130,6 +159,17 @@ export default function AdminProducts() {
   const handleSave = async () => {
     if (!formData.name || !formData.sku || !formData.wholesale_price) {
       toast.error('Completa los campos requeridos');
+      return;
+    }
+
+    // Validación de variantes
+    if (formData.is_master_product && formData.master_product_id) {
+      toast.error('Un producto maestro no puede ser variante de otro');
+      return;
+    }
+
+    if (!formData.is_master_product && formData.master_product_id && !formData.variant_name) {
+      toast.error('Las variantes deben tener un nombre de variante');
       return;
     }
 
@@ -143,6 +183,9 @@ export default function AdminProducts() {
         price_list_3: formData.price_list_3 ? parseFloat(formData.price_list_3) : undefined,
         price_list_4: formData.price_list_4 ? parseFloat(formData.price_list_4) : undefined,
         price_list_5: formData.price_list_5 ? parseFloat(formData.price_list_5) : undefined,
+        variant_order: formData.variant_order ? parseInt(formData.variant_order) : undefined,
+        master_product_id: formData.master_product_id || undefined,
+        variant_name: formData.variant_name || undefined,
       };
 
       if (editingProduct) {
@@ -248,55 +291,81 @@ export default function AdminProducts() {
         </Select>
       </div>
 
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredProducts.map((product) => (
-          <Card key={product.id} className="border-slate-200 hover:shadow-md transition-shadow">
-            <CardContent className="p-4">
-              <div className="flex gap-3">
-                <div className="w-16 h-16 bg-slate-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                  {product.image_url ? (
-                    <img src={product.image_url} alt={product.name} className="w-full h-full object-cover rounded-lg" />
-                  ) : (
-                    <Package className="text-slate-400" size={24} />
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="font-semibold text-slate-800 truncate">{product.name}</p>
-                      <p className="text-xs text-slate-500">{product.sku}</p>
-                    </div>
+      <TooltipProvider>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredProducts.map((product) => (
+            <Card key={product.id} className="border-slate-200 hover:shadow-md transition-shadow">
+              <CardContent className="p-4 relative">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
                     <Button 
                       size="icon" 
                       variant="ghost"
-                      className="h-8 w-8"
-                      onClick={() => openEditDialog(product)}
+                      className="h-8 w-8 absolute top-2 right-2"
                     >
-                      <Pencil size={14} />
+                      <MoreVertical size={16} />
                     </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => openEditDialog(product)}>
+                      <Pencil size={14} className="mr-2" />
+                      Editar
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                <div className="flex gap-3 pr-8">
+                  <div className="w-16 h-16 bg-slate-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                    {product.image_url ? (
+                      <img src={product.image_url} alt={product.name} className="w-full h-full object-cover rounded-lg" />
+                    ) : (
+                      <Package className="text-slate-400" size={24} />
+                    )}
                   </div>
-                  <div className="flex items-center gap-2 mt-2">
-                    <Badge className={getCategoryColor(product.category)} variant="secondary">
-                      {getCategoryLabel(product.category)}
-                    </Badge>
-                    <span className="text-xs text-slate-500">{product.unit}</span>
-                  </div>
-                  <div className="flex items-center gap-1 mt-2 text-amber-600 font-semibold">
-                    <DollarSign size={14} />
-                    <span>{product.wholesale_price?.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span>
+                  <div className="flex-1 min-w-0">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <p className="font-semibold text-slate-800 truncate cursor-help">{product.name}</p>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p className="max-w-xs">{product.name}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                    <p className="text-xs text-slate-500">{product.sku}</p>
+
+                    <div className="flex items-center gap-2 mt-2 flex-wrap">
+                      <Badge className={getCategoryColor(product.category)} variant="secondary">
+                        {getCategoryLabel(product.category)}
+                      </Badge>
+                      <span className="text-xs text-slate-500">{product.unit}</span>
+                      {product.is_master_product && (
+                        <Badge className="bg-purple-100 text-purple-800" variant="secondary">
+                          Maestro
+                        </Badge>
+                      )}
+                      {product.master_product_id && (
+                        <Badge className="bg-indigo-100 text-indigo-800" variant="secondary">
+                          {product.variant_name}
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1 mt-2 text-amber-600 font-semibold">
+                      <DollarSign size={14} />
+                      <span>{product.wholesale_price?.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-              
-              {!product.is_active && (
-                <Badge className="mt-3 bg-red-100 text-red-800" variant="secondary">
-                  Inactivo
-                </Badge>
-              )}
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+
+                {!product.is_active && (
+                  <Badge className="mt-3 bg-red-100 text-red-800" variant="secondary">
+                    Inactivo
+                  </Badge>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </TooltipProvider>
 
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
         <DialogContent className="max-w-lg">
@@ -479,6 +548,66 @@ export default function AdminProducts() {
                   onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
                   placeholder="https://..."
                 />
+              </div>
+              <div className="sm:col-span-2 border-t pt-4 space-y-4">
+                <Label className="text-sm font-semibold">Gestión de Variantes</Label>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={formData.is_master_product}
+                    onCheckedChange={(v) => {
+                      setFormData({ 
+                        ...formData, 
+                        is_master_product: v,
+                        master_product_id: v ? '' : formData.master_product_id
+                      });
+                    }}
+                  />
+                  <Label>Es producto maestro (tiene variantes)</Label>
+                </div>
+                
+                {!formData.is_master_product && (
+                  <div className="space-y-3">
+                    <div>
+                      <Label className="text-xs">Producto Maestro</Label>
+                      <Select 
+                        value={formData.master_product_id} 
+                        onValueChange={(v) => setFormData({ ...formData, master_product_id: v })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccionar producto maestro (opcional)" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={null}>Sin producto maestro</SelectItem>
+                          {masterProducts.map(mp => (
+                            <SelectItem key={mp.id} value={mp.id}>{mp.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    {formData.master_product_id && (
+                      <>
+                        <div>
+                          <Label className="text-xs">Nombre de Variante *</Label>
+                          <Input
+                            value={formData.variant_name}
+                            onChange={(e) => setFormData({ ...formData, variant_name: e.target.value })}
+                            placeholder="ej: 1kg, 500g, Media Pieza"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Orden (opcional)</Label>
+                          <Input
+                            type="number"
+                            value={formData.variant_order}
+                            onChange={(e) => setFormData({ ...formData, variant_order: e.target.value })}
+                            placeholder="1, 2, 3..."
+                          />
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>
