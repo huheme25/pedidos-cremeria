@@ -96,7 +96,6 @@ export default function Layout({ children, currentPageName }) {
   const getRoleLabel = (role) => {
     const labels = {
       cliente: 'Cliente',
-      bodega: 'Bodega',
       bodega_secos: 'Bodega Secos',
       bodega_refrigerados: 'Bodega Refrigerados',
       bodega_barra: 'Bodega Barra',

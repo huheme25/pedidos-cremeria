@@ -96,15 +96,22 @@ export default function AdminUsers() {
       
       // Handle client assignments based on role
       if (data.user_role === 'cliente') {
+        // Cliente must have a client assigned
+        if (!data.assigned_client_id) {
+          toast.error('Selecciona un cliente para este usuario');
+          setSaving(false);
+          return;
+        }
         if (data.assigned_client_id) {
           const client = clients.find(c => c.id === data.assigned_client_id);
           data.assigned_client_name = client?.business_name || '';
         }
         data.assigned_clients = []; // Client role has only one assigned client
       } else if (data.user_role === 'vendedor') {
+        // Vendedor can have multiple clients
         data.assigned_client_id = null;
         data.assigned_client_name = null;
-      } else { // Bodega roles and Admin should have no client assignments
+      } else { // Bodega roles and Admin should have NO client assignments
         data.assigned_client_id = null;
         data.assigned_client_name = null;
         data.assigned_clients = [];
