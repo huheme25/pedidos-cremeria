@@ -599,8 +599,8 @@ export default function AdminProducts() {
                           <Label className="text-xs">Orden (opcional)</Label>
                           <Input
                             type="number"
-                            value={formData.variant_order}
-                            onChange={(e) => setFormData({ ...formData, variant_order: e.target.value })}
+                            value={formData.variant_order !== undefined ? formData.variant_order : ''}
+                            onChange={(e) => setFormData({ ...formData, variant_order: e.target.value ? parseInt(e.target.value) : undefined })}
                             placeholder="1, 2, 3..."
                           />
                         </div>

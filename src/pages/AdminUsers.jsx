@@ -94,10 +94,20 @@ export default function AdminUsers() {
     try {
       const data = { ...formData };
       
-      // Set client name if client is selected
-      if (data.user_role === 'cliente' && data.assigned_client_id) {
-        const client = clients.find(c => c.id === data.assigned_client_id);
-        data.assigned_client_name = client?.business_name || '';
+      // Handle client assignments based on role
+      if (data.user_role === 'cliente') {
+        if (data.assigned_client_id) {
+          const client = clients.find(c => c.id === data.assigned_client_id);
+          data.assigned_client_name = client?.business_name || '';
+        }
+        data.assigned_clients = []; // Client role has only one assigned client
+      } else if (data.user_role === 'vendedor') {
+        data.assigned_client_id = null;
+        data.assigned_client_name = null;
+      } else { // Bodega roles and Admin should have no client assignments
+        data.assigned_client_id = null;
+        data.assigned_client_name = null;
+        data.assigned_clients = [];
       }
 
       await base44.entities.User.update(editingUser.id, data);
@@ -132,7 +142,6 @@ export default function AdminUsers() {
   const getRoleLabel = (role) => {
     const labels = {
       cliente: 'Cliente',
-      bodega: 'Bodega',
       bodega_secos: 'Bodega Secos',
       bodega_refrigerados: 'Bodega Refrigerados',
       bodega_barra: 'Bodega Barra',
@@ -145,7 +154,6 @@ export default function AdminUsers() {
   const getRoleColor = (role) => {
     const colors = {
       cliente: 'bg-blue-100 text-blue-800',
-      bodega: 'bg-green-100 text-green-800',
       bodega_secos: 'bg-teal-100 text-teal-800',
       bodega_refrigerados: 'bg-cyan-100 text-cyan-800',
       bodega_barra: 'bg-orange-100 text-orange-800',
@@ -266,7 +274,14 @@ export default function AdminUsers() {
               <Label>Rol en la App</Label>
               <Select 
                 value={formData.user_role} 
-                onValueChange={(v) => setFormData({ ...formData, user_role: v, assigned_client_id: '', assigned_clients: [] })}
+                onValueChange={(v) => {
+                  const newFormData = { ...formData, user_role: v };
+                  // Clear all client-related fields when changing role to ensure no leftover data
+                  newFormData.assigned_client_id = '';
+                  newFormData.assigned_client_name = '';
+                  newFormData.assigned_clients = [];
+                  setFormData(newFormData);
+                }}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -286,7 +301,7 @@ export default function AdminUsers() {
               <div>
                 <Label>Cliente Asignado</Label>
                 <Select 
-                  value={formData.assigned_client_id} 
+                  value={formData.assigned_client_id || ''}
                   onValueChange={(v) => {
                     const client = clients.find(c => c.id === v);
                     setFormData({ 
@@ -300,6 +315,7 @@ export default function AdminUsers() {
                     <SelectValue placeholder="Selecciona un cliente" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value={null}>Ninguno</SelectItem>
                     {clients.map(client => (
                       <SelectItem key={client.id} value={client.id}>
                         {client.business_name}

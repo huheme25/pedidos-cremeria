@@ -40,6 +40,7 @@ export default function NewOrder() {
   const [user, setUser] = useState(null);
   const [client, setClient] = useState(null);
   const [products, setProducts] = useState([]);
+  const [productsList, setProductsList] = useState([]);
   const [productVariants, setProductVariants] = useState({});
   const [selectedVariants, setSelectedVariants] = useState({});
   const [cart, setCart] = useState([]);
@@ -56,7 +57,7 @@ export default function NewOrder() {
 
   const loadData = async () => {
     try {
-      const [currentUser, productsList] = await Promise.all([
+      const [currentUser, productsData] = await Promise.all([
         base44.auth.me(),
         base44.entities.Product.filter({ is_active: true })
       ]);
@@ -75,9 +76,9 @@ export default function NewOrder() {
       const priceList = clientInfo?.assigned_price_list || 'price_list_1';
 
       // Separate master products, standalone products, and variants
-      const masterProducts = productsList.filter(p => p.is_master_product === true);
-      const standaloneProducts = productsList.filter(p => !p.is_master_product && !p.master_product_id);
-      const variants = productsList.filter(p => p.master_product_id);
+      const masterProducts = productsData.filter(p => p.is_master_product === true);
+      const standaloneProducts = productsData.filter(p => !p.is_master_product && !p.master_product_id);
+      const variants = productsData.filter(p => p.master_product_id);
       
       // Group variants by master product
       const variantsMap = {};
@@ -95,9 +96,8 @@ export default function NewOrder() {
       
       setProductVariants(variantsMap);
 
-      // Map products with correct price based on client's price list
-      const allDisplayProducts = [...masterProducts, ...standaloneProducts, ...variants];
-      const productsWithPrice = allDisplayProducts.map(p => {
+      // Map all products with correct price based on client's price list
+      const productsWithPrice = productsData.map(p => {
         const clientPrice = p[priceList] || p.wholesale_price;
         const effectivePrice = (p.is_on_offer && p.offer_price && p.offer_price < clientPrice) 
           ? p.offer_price 
@@ -111,7 +111,11 @@ export default function NewOrder() {
         };
       });
 
-      setProducts(productsWithPrice.filter(p => p.is_master_product || !p.master_product_id));
+      // Store all products for reference
+      setProductsList(productsWithPrice);
+      
+      // Set main products to display (master products and standalone products)
+      setProducts(productsWithPrice.filter(p => p.is_master_product || (!p.is_master_product && !p.master_product_id)));
     } catch (error) {
       console.error(error);
     } finally {
@@ -127,7 +131,7 @@ export default function NewOrder() {
     return matchesSearch && matchesCategory;
   });
 
-  const categories = [...new Set(products.map(p => p.category))];
+  const categories = [...new Set(productsList.map(p => p.category))];
 
   const addToCart = (product) => {
     if (product.is_master_product) {
