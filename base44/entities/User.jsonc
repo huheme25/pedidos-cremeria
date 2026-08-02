@@ -1,0 +1,48 @@
+{
+  "name": "User",
+  "type": "object",
+  "properties": {
+    "user_role": {
+      "type": "string",
+      "enum": [
+        "cliente",
+        "bodega_secos",
+        "bodega_refrigerados",
+        "bodega_barra",
+        "vendedor",
+        "admin"
+      ],
+      "description": "Rol del usuario en la app"
+    },
+    "assigned_client_id": {
+      "type": "string",
+      "description": "ID del cliente asignado (solo para rol cliente)"
+    },
+    "assigned_client_name": {
+      "type": "string",
+      "description": "Nombre del cliente asignado"
+    },
+    "assigned_clients": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "client_id": {
+            "type": "string"
+          },
+          "client_name": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Lista de clientes asignados (para vendedores)"
+    },
+    "phone": {
+      "type": "string",
+      "description": "Tel\u00e9fono"
+    }
+  },
+  "required": [
+    "user_role"
+  ]
+}

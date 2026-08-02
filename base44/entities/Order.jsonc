@@ -1,0 +1,56 @@
+{
+  "name": "Order",
+  "type": "object",
+  "properties": {
+    "order_number": {
+      "type": "string",
+      "description": "N\u00famero de pedido"
+    },
+    "client_id": {
+      "type": "string",
+      "description": "ID del cliente"
+    },
+    "client_name": {
+      "type": "string",
+      "description": "Nombre del cliente"
+    },
+    "seller_email": {
+      "type": "string",
+      "description": "Email del vendedor asignado"
+    },
+    "seller_name": {
+      "type": "string",
+      "description": "Nombre del vendedor"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pendiente_revision",
+        "en_surtido",
+        "listo_revision",
+        "ajustado",
+        "listo_captura",
+        "cancelado"
+      ],
+      "default": "pendiente_revision",
+      "description": "Estatus del pedido"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Notas generales"
+    },
+    "total_estimated": {
+      "type": "number",
+      "description": "Total estimado del pedido"
+    },
+    "total_final": {
+      "type": "number",
+      "description": "Total final despu\u00e9s de surtido"
+    }
+  },
+  "required": [
+    "client_id",
+    "client_name",
+    "status"
+  ]
+}

@@ -1,0 +1,66 @@
+{
+  "name": "Client",
+  "type": "object",
+  "properties": {
+    "business_name": {
+      "type": "string",
+      "description": "Nombre comercial"
+    },
+    "legal_name": {
+      "type": "string",
+      "description": "Raz\u00f3n social"
+    },
+    "rfc": {
+      "type": "string",
+      "description": "RFC"
+    },
+    "delivery_address": {
+      "type": "string",
+      "description": "Direcci\u00f3n de entrega"
+    },
+    "phone": {
+      "type": "string",
+      "description": "Tel\u00e9fono"
+    },
+    "email": {
+      "type": "string",
+      "description": "Correo electr\u00f3nico"
+    },
+    "route_zone": {
+      "type": "string",
+      "description": "Ruta/Zona de reparto"
+    },
+    "client_type": {
+      "type": "string",
+      "enum": [
+        "tipo_1",
+        "tipo_2",
+        "tipo_3",
+        "tipo_4",
+        "tipo_5"
+      ],
+      "description": "Tipo de cliente"
+    },
+    "assigned_price_list": {
+      "type": "string",
+      "enum": [
+        "price_list_1",
+        "price_list_2",
+        "price_list_3",
+        "price_list_4",
+        "price_list_5"
+      ],
+      "default": "price_list_1",
+      "description": "Lista de precios asignada"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Cliente activo"
+    }
+  },
+  "required": [
+    "business_name",
+    "client_type"
+  ]
+}

@@ -1,0 +1,69 @@
+{
+  "name": "OrderLine",
+  "type": "object",
+  "properties": {
+    "order_id": {
+      "type": "string",
+      "description": "ID del pedido"
+    },
+    "product_id": {
+      "type": "string",
+      "description": "ID del producto"
+    },
+    "product_sku": {
+      "type": "string",
+      "description": "Clave del producto"
+    },
+    "product_name": {
+      "type": "string",
+      "description": "Nombre del producto"
+    },
+    "unit": {
+      "type": "string",
+      "description": "Unidad"
+    },
+    "quantity_requested": {
+      "type": "number",
+      "description": "Cantidad solicitada"
+    },
+    "quantity_requested_unit": {
+      "type": "string",
+      "description": "Unidad original del pedido"
+    },
+    "quantity_fulfilled": {
+      "type": "number",
+      "description": "Cantidad surtida"
+    },
+    "final_billed_quantity": {
+      "type": "number",
+      "description": "Cantidad final para cobro"
+    },
+    "final_billed_unit_price": {
+      "type": "number",
+      "description": "Precio unitario final"
+    },
+    "calculated_subtotal": {
+      "type": "number",
+      "description": "Subtotal calculado"
+    },
+    "unit_price": {
+      "type": "number",
+      "description": "Precio unitario"
+    },
+    "subtotal": {
+      "type": "number",
+      "description": "Subtotal"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Notas del producto"
+    }
+  },
+  "required": [
+    "order_id",
+    "product_id",
+    "product_name",
+    "quantity_requested",
+    "unit_price"
+  ]
+}

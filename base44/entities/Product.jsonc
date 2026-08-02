@@ -1,0 +1,148 @@
+{
+  "name": "Product",
+  "type": "object",
+  "properties": {
+    "sku": {
+      "type": "string",
+      "description": "Clave del producto"
+    },
+    "name": {
+      "type": "string",
+      "description": "Nombre del producto"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "quesos",
+        "cremas",
+        "mantequillas",
+        "yogures",
+        "leches",
+        "otros"
+      ],
+      "description": "Categor\u00eda"
+    },
+    "unit": {
+      "type": "string",
+      "enum": [
+        "caja",
+        "pieza",
+        "paquete",
+        "kg",
+        "litro"
+      ],
+      "description": "Unidad de venta"
+    },
+    "wholesale_price": {
+      "type": "number",
+      "description": "Precio mayorista base"
+    },
+    "price_list_1": {
+      "type": "number",
+      "description": "Precio lista 1"
+    },
+    "price_list_2": {
+      "type": "number",
+      "description": "Precio lista 2"
+    },
+    "price_list_3": {
+      "type": "number",
+      "description": "Precio lista 3"
+    },
+    "price_list_4": {
+      "type": "number",
+      "description": "Precio lista 4"
+    },
+    "price_list_5": {
+      "type": "number",
+      "description": "Precio lista 5"
+    },
+    "has_final_measurement": {
+      "type": "boolean",
+      "default": false,
+      "description": "Requiere medici\u00f3n final diferente"
+    },
+    "final_measurement_unit": {
+      "type": "string",
+      "description": "Unidad de medici\u00f3n final para cobro"
+    },
+    "default_conversion_factor": {
+      "type": "number",
+      "description": "Factor de conversi\u00f3n por defecto"
+    },
+    "warehouse_type": {
+      "type": "string",
+      "enum": [
+        "secos",
+        "refrigerados",
+        "barra",
+        "mixto"
+      ],
+      "default": "refrigerados",
+      "description": "Tipo de bodega"
+    },
+    "is_master_product": {
+      "type": "boolean",
+      "default": false,
+      "description": "Es un producto maestro con variantes"
+    },
+    "master_product_id": {
+      "type": "string",
+      "description": "ID del producto maestro (si es variante)"
+    },
+    "variant_name": {
+      "type": "string",
+      "description": "Nombre de la variante (ej: 1kg, Media Pieza)"
+    },
+    "variant_order": {
+      "type": "number",
+      "description": "Orden de aparici\u00f3n de la variante"
+    },
+    "is_on_offer": {
+      "type": "boolean",
+      "default": false,
+      "description": "Producto en oferta"
+    },
+    "offer_price": {
+      "type": "number",
+      "description": "Precio de oferta"
+    },
+    "offer_description": {
+      "type": "string",
+      "description": "Descripci\u00f3n de la oferta"
+    },
+    "is_combo_item": {
+      "type": "boolean",
+      "default": false,
+      "description": "Es parte de un combo"
+    },
+    "combo_group_id": {
+      "type": "string",
+      "description": "ID del grupo de combo"
+    },
+    "combo_description": {
+      "type": "string",
+      "description": "Descripci\u00f3n del combo"
+    },
+    "image_url_offer": {
+      "type": "string",
+      "description": "URL de imagen de oferta"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Producto activo"
+    },
+    "image_url": {
+      "type": "string",
+      "description": "URL de imagen del producto"
+    }
+  },
+  "required": [
+    "sku",
+    "name",
+    "category",
+    "unit",
+    "wholesale_price"
+  ]
+}
